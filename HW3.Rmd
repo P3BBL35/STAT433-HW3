@@ -1,0 +1,60 @@
+---
+title: "HW3"
+author: "Andrew Li"
+date: "10/15/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(nycflights13)
+library(dplyr)
+library(ggplot2)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Compute the average delay by destination, then join on the airports data frame so you can show the spatial distribution of delays.
+
+```{r}
+delay_airports = flights %>%
+  group_by(dest) %>%
+  summarise(average_arr_delay = mean(arr_delay, na.rm=T),
+            average_dep_delay = mean(dep_delay, na.rm=T)) %>%
+  right_join(airports, c("dest" = "faa"))
+
+delay_airports %>%
+  semi_join(flights) %>%
+  ggplot(aes(lon, lat)) +
+    borders("state") +
+    geom_point(aes(size = average_arr_delay, color=average_dep_delay)) +
+    scale_size_continuous(range=c(1.5, 3)) +
+    coord_quickmap()
+```
+
+### Add the location of the origin and destination (i.e. the lat and lon) to flights
+```{r}
+flights_location = flights %>%
+  left_join(select(airports, lat, lon, faa), by=c("dest" = "faa")) %>%
+  left_join(select(airports, lat, lon, faa), by=c("origin" = "faa"))
+flights_location
+```
+
+### Is there a relationship between the age of a plane and its delays?
+```{r}
+age_flights = planes %>%
+  mutate(age = 2013 - year) %>%
+  select(age, tailnum) %>%
+  right_join(flights, by="tailnum") %>%
+  group_by(age) %>%
+  summarise(average_dep_delay = mean(dep_delay, na.rm=T),
+            average_arr_delay = mean(arr_delay, na.rm=T))
+age_flights %>%
+  ggplot(aes(x = age, y = average_dep_delay)) +
+  geom_point()
+age_flights %>%
+  ggplot(aes(x = age, y = average_arr_delay)) +
+  geom_point()
+```
+
+We can see that there is no clear relationship between the age of the plane and
+the delays that it suffers.
+
